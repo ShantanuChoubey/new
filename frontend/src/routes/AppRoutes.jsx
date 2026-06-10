@@ -7,11 +7,13 @@ import PublicRoute    from "./PublicRoute";
 import MainLayout from "../components/layout/MainLayout";
 import AuthLayout from "../components/layout/AuthLayout";
 
-import Home      from "../pages/Home";
-import Login     from "../pages/Login";
-import Register  from "../pages/Register";
-import Dashboard from "../pages/Dashboard";
-import NotFound  from "../pages/NotFound";
+import Home               from "../pages/Home";
+import Login              from "../pages/Login";
+import Register           from "../pages/Register";
+import VerifyRegisterOtp  from "../pages/VerifyRegisterOtp";
+import VerifyLoginOtp     from "../pages/VerifyLoginOtp";
+import Dashboard          from "../pages/Dashboard";
+import NotFound           from "../pages/NotFound";
 
 function AppRoutes() {
   return (
@@ -24,8 +26,10 @@ function AppRoutes() {
       {/* ── Auth pages (redirect if logged in) ── */}
       <Route element={<PublicRoute />}>
         <Route element={<AuthLayout />}>
-          <Route path={ROUTES.LOGIN}    element={<Login />} />
-          <Route path={ROUTES.REGISTER} element={<Register />} />
+          <Route path={ROUTES.LOGIN}               element={<Login />} />
+          <Route path={ROUTES.REGISTER}            element={<Register />} />
+          <Route path={ROUTES.VERIFY_REGISTER_OTP} element={<VerifyRegisterOtp />} />
+          <Route path={ROUTES.VERIFY_LOGIN_OTP}    element={<VerifyLoginOtp />} />
         </Route>
       </Route>
 

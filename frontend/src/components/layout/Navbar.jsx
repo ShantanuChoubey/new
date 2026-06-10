@@ -9,19 +9,18 @@ import Button from "../ui/Button";
 
 const navLinkClass = ({ isActive }) =>
   `text-sm font-medium transition-colors duration-200 ${
-    isActive
-      ? "text-primary-600"
-      : "text-secondary-600 hover:text-secondary-900"
+    isActive ? "text-primary-600" : "text-secondary-600 hover:text-secondary-900"
   }`;
 
 function Navbar() {
-  const { isAuthenticated, user, logoutUser } = useAuth();
-  const navigate  = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { isAuthenticated, user, handleLogout } = useAuth();
+  const navigate   = useNavigate();
+  const [open, setOpen] = useState(false);
 
-  const handleLogout = async () => {
-    await logoutUser();
+  const onLogout = () => {
+    handleLogout();
     navigate(ROUTES.LOGIN);
+    setOpen(false);
   };
 
   return (
@@ -35,13 +34,9 @@ function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6">
-          <NavLink to={ROUTES.HOME} className={navLinkClass}>
-            Home
-          </NavLink>
+          <NavLink to={ROUTES.HOME} className={navLinkClass}>Home</NavLink>
           {isAuthenticated && (
-            <NavLink to={ROUTES.DASHBOARD} className={navLinkClass}>
-              Dashboard
-            </NavLink>
+            <NavLink to={ROUTES.DASHBOARD} className={navLinkClass}>Dashboard</NavLink>
           )}
         </nav>
 
@@ -52,30 +47,16 @@ function Navbar() {
               <span className="text-sm text-secondary-500">
                 Hi, <span className="font-medium text-secondary-800">{user?.name ?? "User"}</span>
               </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                leftIcon={<LogOut size={15} />}
-              >
+              <Button variant="outline" size="sm" onClick={onLogout} leftIcon={<LogOut size={15} />}>
                 Logout
               </Button>
             </>
           ) : (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(ROUTES.LOGIN)}
-                leftIcon={<LogIn size={15} />}
-              >
+              <Button variant="ghost" size="sm" onClick={() => navigate(ROUTES.LOGIN)} leftIcon={<LogIn size={15} />}>
                 Login
               </Button>
-              <Button
-                size="sm"
-                onClick={() => navigate(ROUTES.REGISTER)}
-                leftIcon={<UserPlus size={15} />}
-              >
+              <Button size="sm" onClick={() => navigate(ROUTES.REGISTER)} leftIcon={<UserPlus size={15} />}>
                 Sign up
               </Button>
             </>
@@ -85,16 +66,16 @@ function Navbar() {
         {/* Mobile hamburger */}
         <button
           className="md:hidden p-2 rounded-lg text-secondary-600 hover:bg-secondary-100 transition-colors"
-          onClick={() => setMenuOpen((v) => !v)}
+          onClick={() => setOpen((v) => !v)}
           aria-label="Toggle menu"
         >
-          {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
       {/* Mobile menu */}
       <AnimatePresence>
-        {menuOpen && (
+        {open && (
           <motion.div
             key="mobile-menu"
             initial={{ opacity: 0, height: 0 }}
@@ -104,19 +85,11 @@ function Navbar() {
             className="md:hidden border-t border-secondary-100 bg-white"
           >
             <div className="container-app py-4 flex flex-col gap-4">
-              <NavLink
-                to={ROUTES.HOME}
-                className={navLinkClass}
-                onClick={() => setMenuOpen(false)}
-              >
+              <NavLink to={ROUTES.HOME} className={navLinkClass} onClick={() => setOpen(false)}>
                 Home
               </NavLink>
               {isAuthenticated && (
-                <NavLink
-                  to={ROUTES.DASHBOARD}
-                  className={navLinkClass}
-                  onClick={() => setMenuOpen(false)}
-                >
+                <NavLink to={ROUTES.DASHBOARD} className={navLinkClass} onClick={() => setOpen(false)}>
                   <span className="flex items-center gap-2">
                     <LayoutDashboard size={16} /> Dashboard
                   </span>
@@ -124,30 +97,15 @@ function Navbar() {
               )}
               <div className="flex gap-3 pt-2 border-t border-secondary-100">
                 {isAuthenticated ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { handleLogout(); setMenuOpen(false); }}
-                    leftIcon={<LogOut size={15} />}
-                    fullWidth
-                  >
+                  <Button variant="outline" size="sm" onClick={onLogout} leftIcon={<LogOut size={15} />} fullWidth>
                     Logout
                   </Button>
                 ) : (
                   <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { navigate(ROUTES.LOGIN); setMenuOpen(false); }}
-                      fullWidth
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => { navigate(ROUTES.LOGIN); setOpen(false); }} fullWidth>
                       Login
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => { navigate(ROUTES.REGISTER); setMenuOpen(false); }}
-                      fullWidth
-                    >
+                    <Button size="sm" onClick={() => { navigate(ROUTES.REGISTER); setOpen(false); }} fullWidth>
                       Sign up
                     </Button>
                   </>

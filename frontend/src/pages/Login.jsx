@@ -1,18 +1,15 @@
 import { useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Mail, Lock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ROUTES } from "../constants/routes";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
-import ErrorMessage from "../components/ui/ErrorMessage";
 
 function Login() {
-  const { loginUser, isLoading, error, isAuthenticated } = useAuth();
-  const navigate  = useNavigate();
-  const location  = useLocation();
-  const from      = location.state?.from?.pathname ?? ROUTES.DASHBOARD;
+  const { handleLogin, isLoading, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -20,14 +17,17 @@ function Login() {
     formState: { errors },
   } = useForm({ mode: "onTouched" });
 
-  // Redirect if already logged in
+  // Already logged in → dashboard
   useEffect(() => {
-    if (isAuthenticated) navigate(from, { replace: true });
-  }, [isAuthenticated, navigate, from]);
+    if (isAuthenticated) navigate(ROUTES.DASHBOARD, { replace: true });
+  }, [isAuthenticated, navigate]);
 
   const onSubmit = async (data) => {
-    const result = await loginUser(data);
-    if (result.success) navigate(from, { replace: true });
+    const result = await handleLogin(data);
+    if (result.success) {
+      // Redirect to OTP page, pass email so user doesn't retype
+      navigate(ROUTES.VERIFY_LOGIN_OTP, { state: { email: data.email } });
+    }
   };
 
   return (
@@ -35,11 +35,9 @@ function Login() {
       <div className="text-center">
         <h1 className="text-2xl font-bold text-secondary-900">Welcome back</h1>
         <p className="text-secondary-500 text-sm mt-1">
-          Sign in to your account to continue
+          We'll send a login OTP to your email
         </p>
       </div>
-
-      {error && !isLoading && <ErrorMessage error={error} />}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <Input
@@ -50,10 +48,7 @@ function Login() {
           error={errors.email?.message}
           {...register("email", {
             required: "Email is required.",
-            pattern: {
-              value: /^\S+@\S+\.\S+$/,
-              message: "Enter a valid email address.",
-            },
+            pattern: { value: /^\S+@\S+\.\S+$/, message: "Enter a valid email." },
           })}
         />
 
@@ -63,21 +58,14 @@ function Login() {
           placeholder="••••••••"
           leftIcon={<Lock size={16} />}
           error={errors.password?.message}
-          hint="Minimum 8 characters."
           {...register("password", {
             required: "Password is required.",
-            minLength: { value: 8, message: "Password must be at least 8 characters." },
+            minLength: { value: 6, message: "Password must be at least 6 characters." },
           })}
         />
 
-        <Button
-          type="submit"
-          fullWidth
-          isLoading={isLoading}
-          size="md"
-          className="mt-2"
-        >
-          Sign in
+        <Button type="submit" fullWidth isLoading={isLoading} size="md" className="mt-2">
+          Send OTP
         </Button>
       </form>
 

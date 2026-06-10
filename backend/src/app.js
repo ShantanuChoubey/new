@@ -4,6 +4,7 @@ const morgan  = require("morgan");
 
 const healthRoutes  = require("./routes/healthRoutes");
 const testRoutes    = require("./routes/testRoutes");
+const authRoutes    = require("./routes/authRoutes");
 const notFound      = require("./middleware/notFound");
 const errorHandler  = require("./middleware/errorHandler");
 
@@ -32,6 +33,7 @@ if (process.env.NODE_ENV === "development") {
 // ─── Routes ────────────────────────────────────────────────────
 app.use("/api/health", healthRoutes);
 app.use("/api/test",   testRoutes);
+app.use("/api/auth",   authRoutes);
 
 // Root route — quick sanity check
 app.get("/", (req, res) => {

@@ -1,16 +1,21 @@
 import { createContext, useContext, useEffect, useReducer, useCallback } from "react";
 import toast from "react-hot-toast";
-import { login, logout, register, getMe } from "../services/authService";
-import { TOKEN_KEY, USER_KEY } from "../constants/app";
-import { getItem, setItem, removeItem } from "../utils/storage";
+import {
+  registerUser,
+  verifyRegisterOtp,
+  loginUser,
+  verifyLoginOtp,
+  getProfile,
+} from "../services/authService";
+import { saveToken, saveUser, clearAuth, getToken, getUser } from "../utils/tokenStorage";
 
-// ── State shape ────────────────────────────────────────────────
+// ── Initial state ──────────────────────────────────────────────
 const initialState = {
-  user:          getItem(USER_KEY),
-  token:         getItem(TOKEN_KEY),
-  isLoading:     false,
+  user:           getUser(),
+  token:          getToken(),
+  isLoading:      false,
   isInitializing: true,
-  error:         null,
+  error:          null,
 };
 
 // ── Reducer ────────────────────────────────────────────────────
@@ -20,10 +25,14 @@ function authReducer(state, action) {
       return { ...state, isLoading: action.payload, error: null };
     case "SET_ERROR":
       return { ...state, error: action.payload, isLoading: false };
-    case "SET_USER":
-      return { ...state, user: action.payload, isLoading: false, error: null };
-    case "SET_TOKEN":
-      return { ...state, token: action.payload };
+    case "AUTH_SUCCESS":
+      return {
+        ...state,
+        token:     action.payload.token,
+        user:      action.payload.user,
+        isLoading: false,
+        error:     null,
+      };
     case "INITIALIZED":
       return { ...state, isInitializing: false };
     case "LOGOUT":
@@ -39,54 +48,34 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Validate stored token on mount
+  // On mount: validate stored token by calling profile API
   useEffect(() => {
     async function init() {
-      if (state.token) {
+      const token = getToken();
+      if (token) {
         try {
-          const data = await getMe();
-          dispatch({ type: "SET_USER", payload: data.user ?? data });
-          setItem(USER_KEY, data.user ?? data);
+          const data = await getProfile();
+          const user = data?.data?.user ?? data;
+          dispatch({ type: "AUTH_SUCCESS", payload: { token, user } });
+          saveUser(user);
         } catch {
-          removeItem(TOKEN_KEY);
-          removeItem(USER_KEY);
+          clearAuth();
           dispatch({ type: "LOGOUT" });
         }
       }
       dispatch({ type: "INITIALIZED" });
     }
     init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line
 
-  const loginUser = useCallback(async (credentials) => {
+  // ── Step 1: Register (sends OTP, no token yet) ─────────────
+  const handleRegister = useCallback(async (userData) => {
     dispatch({ type: "SET_LOADING", payload: true });
     try {
-      const data = await login(credentials);
-      setItem(TOKEN_KEY, data.token);
-      setItem(USER_KEY, data.user);
-      dispatch({ type: "SET_TOKEN", payload: data.token });
-      dispatch({ type: "SET_USER",  payload: data.user });
-      toast.success(`Welcome back, ${data.user?.name ?? "User"}!`);
-      return { success: true };
-    } catch (error) {
-      const message = error?.response?.data?.message ?? "Login failed.";
-      dispatch({ type: "SET_ERROR", payload: message });
-      toast.error(message);
-      return { success: false, message };
-    }
-  }, []);
-
-  const registerUser = useCallback(async (userData) => {
-    dispatch({ type: "SET_LOADING", payload: true });
-    try {
-      const data = await register(userData);
-      setItem(TOKEN_KEY, data.token);
-      setItem(USER_KEY, data.user);
-      dispatch({ type: "SET_TOKEN", payload: data.token });
-      dispatch({ type: "SET_USER",  payload: data.user });
-      toast.success("Account created successfully!");
-      return { success: true };
+      const data = await registerUser(userData);
+      dispatch({ type: "SET_LOADING", payload: false });
+      toast.success(data.message || "OTP sent to your email!");
+      return { success: true, email: userData.email };
     } catch (error) {
       const message = error?.response?.data?.message ?? "Registration failed.";
       dispatch({ type: "SET_ERROR", payload: message });
@@ -95,37 +84,89 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const logoutUser = useCallback(async () => {
+  // ── Step 2: Verify Register OTP (returns JWT) ──────────────
+  const handleVerifyRegisterOtp = useCallback(async (payload) => {
+    dispatch({ type: "SET_LOADING", payload: true });
     try {
-      await logout();
-    } catch {
-      // ignore server errors on logout
-    } finally {
-      removeItem(TOKEN_KEY);
-      removeItem(USER_KEY);
-      dispatch({ type: "LOGOUT" });
-      toast.success("Logged out successfully.");
+      const data = await verifyRegisterOtp(payload);
+      const { token, user } = data.data;
+      saveToken(token);
+      saveUser(user);
+      dispatch({ type: "AUTH_SUCCESS", payload: { token, user } });
+      toast.success(data.message || "Email verified! Welcome 🎉");
+      return { success: true };
+    } catch (error) {
+      const message = error?.response?.data?.message ?? "OTP verification failed.";
+      dispatch({ type: "SET_ERROR", payload: message });
+      toast.error(message);
+      return { success: false, message };
     }
+  }, []);
+
+  // ── Step 3: Login (sends OTP, no token yet) ────────────────
+  const handleLogin = useCallback(async (credentials) => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    try {
+      const data = await loginUser(credentials);
+      dispatch({ type: "SET_LOADING", payload: false });
+      toast.success(data.message || "OTP sent to your email!");
+      return { success: true, email: credentials.email };
+    } catch (error) {
+      const message = error?.response?.data?.message ?? "Login failed.";
+      dispatch({ type: "SET_ERROR", payload: message });
+      toast.error(message);
+      return { success: false, message };
+    }
+  }, []);
+
+  // ── Step 4: Verify Login OTP (returns JWT) ─────────────────
+  const handleVerifyLoginOtp = useCallback(async (payload) => {
+    dispatch({ type: "SET_LOADING", payload: true });
+    try {
+      const data = await verifyLoginOtp(payload);
+      const { token, user } = data.data;
+      saveToken(token);
+      saveUser(user);
+      dispatch({ type: "AUTH_SUCCESS", payload: { token, user } });
+      toast.success(data.message || `Welcome back, ${user.name}!`);
+      return { success: true };
+    } catch (error) {
+      const message = error?.response?.data?.message ?? "OTP verification failed.";
+      dispatch({ type: "SET_ERROR", payload: message });
+      toast.error(message);
+      return { success: false, message };
+    }
+  }, []);
+
+  // ── Logout ─────────────────────────────────────────────────
+  const handleLogout = useCallback(() => {
+    clearAuth();
+    dispatch({ type: "LOGOUT" });
+    toast.success("Logged out successfully.");
   }, []);
 
   const value = {
     ...state,
-    isAuthenticated: !!state.token && !!state.user,
-    loginUser,
-    registerUser,
-    logoutUser,
+    isAuthenticated:      !!state.token && !!state.user,
+    // Action handlers
+    handleRegister,
+    handleVerifyRegisterOtp,
+    handleLogin,
+    handleVerifyLoginOtp,
+    handleLogout,
+    // Backward compat aliases
+    loginUser:    handleLogin,
+    registerUser: handleRegister,
+    logoutUser:   handleLogout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// ── Hook ───────────────────────────────────────────────────────
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 }
 
 export default AuthContext;

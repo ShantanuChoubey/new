@@ -6,10 +6,9 @@ import { useAuth } from "../context/AuthContext";
 import { ROUTES } from "../constants/routes";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
-import ErrorMessage from "../components/ui/ErrorMessage";
 
 function Register() {
-  const { registerUser, isLoading, error, isAuthenticated } = useAuth();
+  const { handleRegister, isLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const {
@@ -21,15 +20,18 @@ function Register() {
 
   const passwordValue = watch("password", "");
 
+  // Already logged in → go to dashboard
   useEffect(() => {
     if (isAuthenticated) navigate(ROUTES.DASHBOARD, { replace: true });
   }, [isAuthenticated, navigate]);
 
   const onSubmit = async (data) => {
-    // eslint-disable-next-line no-unused-vars
-    const { confirmPassword, ...payload } = data;
-    const result = await registerUser(payload);
-    if (result.success) navigate(ROUTES.DASHBOARD, { replace: true });
+    const { confirmPassword, ...payload } = data; // eslint-disable-line no-unused-vars
+    const result = await handleRegister(payload);
+    if (result.success) {
+      // Redirect to OTP page, pass email via state so user doesn't retype it
+      navigate(ROUTES.VERIFY_REGISTER_OTP, { state: { email: payload.email } });
+    }
   };
 
   return (
@@ -37,11 +39,9 @@ function Register() {
       <div className="text-center">
         <h1 className="text-2xl font-bold text-secondary-900">Create an account</h1>
         <p className="text-secondary-500 text-sm mt-1">
-          Get started for free — no credit card required
+          We'll send a verification OTP to your email
         </p>
       </div>
-
-      {error && !isLoading && <ErrorMessage error={error} />}
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
         <Input
@@ -64,10 +64,7 @@ function Register() {
           error={errors.email?.message}
           {...register("email", {
             required: "Email is required.",
-            pattern: {
-              value: /^\S+@\S+\.\S+$/,
-              message: "Enter a valid email address.",
-            },
+            pattern: { value: /^\S+@\S+\.\S+$/, message: "Enter a valid email." },
           })}
         />
 
@@ -77,10 +74,10 @@ function Register() {
           placeholder="••••••••"
           leftIcon={<Lock size={16} />}
           error={errors.password?.message}
-          hint="At least 8 characters."
+          hint="At least 6 characters."
           {...register("password", {
             required: "Password is required.",
-            minLength: { value: 8, message: "Password must be at least 8 characters." },
+            minLength: { value: 6, message: "Password must be at least 6 characters." },
           })}
         />
 
@@ -92,28 +89,18 @@ function Register() {
           error={errors.confirmPassword?.message}
           {...register("confirmPassword", {
             required: "Please confirm your password.",
-            validate: (value) =>
-              value === passwordValue || "Passwords do not match.",
+            validate: (v) => v === passwordValue || "Passwords do not match.",
           })}
         />
 
-        <Button
-          type="submit"
-          fullWidth
-          isLoading={isLoading}
-          size="md"
-          className="mt-2"
-        >
+        <Button type="submit" fullWidth isLoading={isLoading} size="md" className="mt-2">
           Create account
         </Button>
       </form>
 
       <p className="text-center text-sm text-secondary-600">
         Already have an account?{" "}
-        <Link
-          to={ROUTES.LOGIN}
-          className="font-medium text-primary-600 hover:text-primary-700 underline underline-offset-2"
-        >
+        <Link to={ROUTES.LOGIN} className="font-medium text-primary-600 hover:text-primary-700 underline underline-offset-2">
           Sign in
         </Link>
       </p>

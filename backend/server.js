@@ -1,11 +1,21 @@
-// Load environment variables first — before anything else
-require("dotenv").config();
+// Load environment variables from the backend folder explicitly.
+// Render will run from the backend root, so we ensure dotenv reads the right file.
+require("dotenv").config({ path: __dirname + "/.env" });
 
-const app       = require("./src/app");
+const path = require("path");
+const app = require("./src/app");
 const connectDB = require("./src/config/db");
 const { verifySmtp } = require("./src/config/smtp");
 
 const PORT = process.env.PORT || 5000;
+
+console.log("================ Render startup diagnostics ================");
+console.log(`cwd: ${process.cwd()}`);
+console.log(`server.js path: ${__dirname}`);
+console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
+console.log(`MONGO_URI set: ${!!process.env.MONGO_URI}`);
+console.log(`PORT set: ${process.env.PORT || "not set"}`);
+console.log("==========================================================");
 
 // Connect to MongoDB then start server
 const startServer = async () => {

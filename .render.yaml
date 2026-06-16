@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: demo-project-backend
-    env: node
-    plan: free
-    branch: main
-    root: backend
-    buildCommand: npm install
-    startCommand: npm start

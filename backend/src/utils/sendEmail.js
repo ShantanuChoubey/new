@@ -1,11 +1,42 @@
-const { sendEmail } = require("../config/mailer");
+const { transporter } = require("../config/smtp");
+
+const ensureEmailService = () => {
+  if (!transporter) {
+    const error = new Error("Email service is not configured. Please contact admin.");
+    error.statusCode = 503;
+    throw error;
+  }
+};
+
+const sendEmail = async ({ to, subject, html, text }) => {
+  ensureEmailService();
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || `"App" <${process.env.SMTP_USER}>`,
+    to,
+    subject,
+    html,
+    text,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`📧 Email sent to ${to} — MessageId: ${info.messageId}`);
+    return info;
+  } catch (error) {
+    console.warn(`⚠️ Failed to send email to ${to}: ${error.message}`);
+    const err = new Error("Email service is not configured. Please contact admin.");
+    err.statusCode = 503;
+    throw err;
+  }
+};
 
 /**
  * Send OTP email for registration verification.
  */
 const sendRegisterOtpEmail = async (email, name, otp) => {
   await sendEmail({
-    to:      email,
+    to: email,
     subject: "Verify your email — OTP",
     html: `
       <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:8px;">
@@ -27,7 +58,7 @@ const sendRegisterOtpEmail = async (email, name, otp) => {
  */
 const sendLoginOtpEmail = async (email, name, otp) => {
   await sendEmail({
-    to:      email,
+    to: email,
     subject: "Your login OTP",
     html: `
       <div style="font-family:Arial,sans-serif;max-width:500px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:8px;">
@@ -45,3 +76,4 @@ const sendLoginOtpEmail = async (email, name, otp) => {
 };
 
 module.exports = { sendRegisterOtpEmail, sendLoginOtpEmail };
+

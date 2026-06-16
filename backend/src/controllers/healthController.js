@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { cloudinary } = require("../config/cloudinary");
+const { emailServiceStatus } = require("../config/smtp");
 const { sendSuccess } = require("../utils/response");
 
 /**
@@ -7,11 +8,15 @@ const { sendSuccess } = require("../utils/response");
  * Basic health check — confirms server is running.
  */
 const healthCheck = (req, res) => {
-  sendSuccess(res, {
-    server:    "running",
-    timestamp: new Date().toISOString(),
-    uptime:    `${Math.floor(process.uptime())}s`,
-  }, "Server is healthy");
+  sendSuccess(
+    res,
+    {
+      environment: process.env.NODE_ENV || "development",
+      emailService: emailServiceStatus,
+    },
+    "Backend is running",
+    200
+  );
 };
 
 /**

@@ -39,21 +39,34 @@ const register = async (req, res, next) => {
       existing.password    = password; // will be hashed by pre-save hook
       existing.otp         = hashedOtp;
       existing.otpExpiresAt = otpExpiresAt;
-      await existing.save();
-    } else {
-      // Create new user
-      await User.create({
-        name,
-        email,
-        password,
-        isEmailVerified: false,
-        otp:             hashedOtp,
-        otpExpiresAt,
-      });
-    }
 
-    // Send OTP email
-    await sendRegisterOtpEmail(email, name, otp);
+      try {
+        await sendRegisterOtpEmail(email, name, otp);
+        await existing.save();
+      } catch (error) {
+        if (error.statusCode === 503) {
+          return sendError(res, "Email service is not configured. OTP cannot be sent.", 503);
+        }
+        throw error;
+      }
+    } else {
+      try {
+        await sendRegisterOtpEmail(email, name, otp);
+        await User.create({
+          name,
+          email,
+          password,
+          isEmailVerified: false,
+          otp:             hashedOtp,
+          otpExpiresAt,
+        });
+      } catch (error) {
+        if (error.statusCode === 503) {
+          return sendError(res, "Email service is not configured. OTP cannot be sent.", 503);
+        }
+        throw error;
+      }
+    }
 
     sendSuccess(
       res,
@@ -167,10 +180,16 @@ const login = async (req, res, next) => {
 
     user.otp          = hashedOtp;
     user.otpExpiresAt = otpExpiresAt;
-    await user.save();
 
-    // Send OTP email
-    await sendLoginOtpEmail(email, user.name, otp);
+    try {
+      await sendLoginOtpEmail(email, user.name, otp);
+      await user.save();
+    } catch (error) {
+      if (error.statusCode === 503) {
+        return sendError(res, "Email service is not configured. OTP cannot be sent.", 503);
+      }
+      throw error;
+    }
 
     sendSuccess(
       res,

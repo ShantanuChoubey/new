@@ -1,6 +1,18 @@
 const cloudinary = require("cloudinary").v2;
 const streamifier = require("streamifier");
 
+const missingCloudinaryVars = [
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_KEY",
+  "CLOUDINARY_API_SECRET",
+].filter((key) => !process.env[key]);
+
+if (missingCloudinaryVars.length > 0) {
+  console.warn(
+    `⚠️ Cloudinary is not fully configured. Missing env: ${missingCloudinaryVars.join(", ")}`
+  );
+}
+
 // Configure Cloudinary using credentials from .env
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
